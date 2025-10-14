@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Satoshi’s Arcade MCP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/frontend/manifest.json">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap');
+    * { box-sizing: border-box; }
+    body {
+      background: radial-gradient(circle at top left,#000010 0%,#0a0a0f 100%);
+      color: #e0e0e0;
+      font-family: 'IBM Plex Sans', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+    #logo {
+      font-size: 3rem;
+      font-weight: 600;
+      letter-spacing: 2px;
+      background: linear-gradient(90deg,#1f6feb,#00ffe0,#e91e63);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      opacity: 0;
+      animation: flicker 3s ease-in-out forwards;
+    }
+    @keyframes flicker {
+      0%,10%,20%,22%,24%,28%,30%,40% { opacity:0; }
+      25%,27%,29%,33%,36%,38%,42%,100% { opacity:1; }
+    }
+    .menu {
+      display: flex;
+      gap: 40px;
+      margin-top: 50px;
+      opacity: 0;
+      animation: fadeIn 3s ease forwards 2.8s;
+    }
+    @keyframes fadeIn { to { opacity: 1; } }
+    .game-card {
+      width: 200px; height: 200px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-decoration: none; color: white;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .game-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 0 25px rgba(0,255,224,0.4);
+    }
+    .emoji { font-size: 54px; margin-bottom: 10px; }
+    footer {
+      position: absolute; bottom: 20px; color:#555;
+      font-size:0.8rem; letter-spacing:1px;
+    }
+  </style>
+</head>
+<body>
+  <div id="logo">Satoshi’s Arcade MCP</div>
+  <div class="menu">
+    <a href="/tetris" class="game-card" id="tetris">
+      <div class="emoji">🧱</div><div>Tetris</div>
+    </a>
+    <a href="/pingpong" class="game-card" id="pong">
+      <div class="emoji">🏓</div><div>Ping-Pong AI</div>
+    </a>
+  </div>
+  <footer>© 2025 Polydeuces32 • Powered by MCP</footer>
+
+  <audio id="hum" src="https://cdn.pixabay.com/download/audio/2023/03/01/audio_4f0d73e4c4.mp3?filename=synth-hum-143912.mp3" loop></audio>
+  <audio id="hover" src="https://cdn.pixabay.com/download/audio/2022/02/23/audio_f727be7c5c.mp3?filename=soft-click-14696.mp3"></audio>
+  <script>
+    const hum=document.getElementById('hum');
+    const hover=document.getElementById('hover');
+    window.addEventListener('click',()=>hum.play(),{once:true});
+    document.querySelectorAll('.game-card').forEach(btn=>{
+      btn.addEventListener('mouseenter',()=>{hover.currentTime=0;hover.play();});
+    });
+  </script>
+</body>
+</html>
+

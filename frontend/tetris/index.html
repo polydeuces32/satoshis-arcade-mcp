@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tetris AI | Satoshi's Arcade MCP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/frontend/manifest.json">
+  <meta name="theme-color" content="#0a0a0f">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap');
+    body { 
+      margin: 0; 
+      background: radial-gradient(circle at center, #0a0a0f 0%, #000 100%);
+      font-family: 'IBM Plex Sans', sans-serif;
+      color: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .game-container {
+      display: flex;
+      gap: 30px;
+      align-items: flex-start;
+    }
+    canvas { 
+      background: rgba(10,10,15,0.9); 
+      box-shadow: 0 0 40px rgba(0,255,224,0.2) inset;
+      border: 1px solid rgba(0,255,224,0.3);
+    }
+    .game-info {
+      background: rgba(0,0,0,0.7);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,255,224,0.3);
+      min-width: 200px;
+    }
+    .score { color: #00ffe0; font-size: 18px; margin-bottom: 10px; }
+    .level { color: #1f6feb; font-size: 16px; margin-bottom: 10px; }
+    .lines { color: #e91e63; font-size: 16px; margin-bottom: 20px; }
+    .ai-info {
+      background: rgba(233,30,99,0.1);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(233,30,99,0.3);
+      margin-bottom: 20px;
+    }
+    .controls {
+      font-size: 12px;
+      color: #888;
+      line-height: 1.4;
+    }
+    .next-piece {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .next-canvas {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(0,255,224,0.2);
+    }
+    #game-over {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.9);
+      padding: 30px;
+      border-radius: 12px;
+      border: 2px solid #e91e63;
+      text-align: center;
+      display: none;
+    }
+    .restart-btn {
+      background: linear-gradient(45deg, #1f6feb, #00ffe0);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      color: white;
+      font-family: 'IBM Plex Sans', sans-serif;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    .loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #00ffe0;
+      font-size: 18px;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div class="loading" id="loading">Initializing Tetris AI...</div>
+  
+  <div class="game-container">
+    <div>
+      <canvas id="tetris" width="300" height="600"></canvas>
+    </div>
+    
+    <div class="game-info">
+      <div class="score">Score: <span id="score">0</span></div>
+      <div class="level">Level: <span id="level">1</span></div>
+      <div class="lines">Lines: <span id="lines">0</span></div>
+      
+      <div class="ai-info">
+        <div>AI Difficulty: <span id="ai-difficulty">0.5</span></div>
+        <div>Drop Speed: <span id="drop-speed">1.0</span></div>
+        <div>Games Played: <span id="games-played">0</span></div>
+      </div>
+      
+      <div class="next-piece">
+        <div style="color: #00ffe0; margin-bottom: 10px;">Next:</div>
+        <canvas id="next" width="80" height="80" class="next-canvas"></canvas>
+      </div>
+      
+      <div class="controls">
+        <div><strong>Controls:</strong></div>
+        <div>← → Move</div>
+        <div>↓ Soft Drop</div>
+        <div>↑ Rotate</div>
+        <div>Space Hard Drop</div>
+        <div>P Pause</div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="game-over">
+    <h2 style="color: #e91e63;">Game Over!</h2>
+    <div style="color: #00ffe0;">Final Score: <span id="final-score">0</span></div>
+    <button class="restart-btn" onclick="restartGame()">Play Again</button>
+  </div>
+
+  <!-- HARD BASS BOOM Sound Effects for Tetris -->
+  <audio id="move" preload="auto"></audio>
+  <audio id="rotate" preload="auto"></audio>
+  <audio id="drop" preload="auto"></audio>
+  <audio id="line-clear" preload="auto"></audio>
+  <audio id="tetris-clear" preload="auto"></audio>
+  <audio id="game-over-sound" preload="auto"></audio>
+  <audio id="level-up" preload="auto"></audio>
+
+  <script>
+    const canvas = document.getElementById('tetris');
+    const ctx = canvas.getContext('2d');
+    const nextCanvas = document.getElementById('next');
+    const nextCtx = nextCanvas.getContext('2d');
+    
+    const BLOCK_SIZE = 30;
+    const BOARD_WIDTH = 10;
+    const BOARD_HEIGHT = 20;
+    
+    // Tetris pieces (Tetrominoes)
+    const PIECES = [
+      { shape: [[1,1,1,1]], color: '#00ffe0' }, // I
+      { shape: [[1,1],[1,1]], color: '#1f6feb' }, // O
+      { shape: [[0,1,0],[1,1,1]], color: '#e91e63' }, // T
+      { shape: [[0,1,1],[1,1,0]], color: '#ff6b35' }, // S
+      { shape: [[1,1,0],[0,1,1]], color: '#9c27b0' }, // Z
+      { shape: [[1,0,0],[1,1,1]], color: '#4caf50' }, // J
+      { shape: [[0,0,1],[1,1,1]], color: '#ff9800' }  // L
+    ];
+    
+    // Sound management with HARD BASS BOOM
+    const sounds = {
+      move: document.getElementById('move'),
+      rotate: document.getElementById('rotate'),
+      drop: document.getElementById('drop'),
+      lineClear: document.getElementById('line-clear'),
+      tetrisClear: document.getElementById('tetris-clear'),
+      gameOver: document.getElementById('game-over-sound'),
+      levelUp: document.getElementById('level-up')
+    };
+    
+    // Play HARD BASS BOOM sound
+    function playSound(soundName) {
+      try {
+        const sound = sounds[soundName];
+        if (sound) {
+          sound.currentTime = 0;
+          sound.play().catch(e => {
+            console.log('Sound play failed, using BASS BOOM:', e);
+            createBassBoom(soundName);
+          });
+        } else {
+          createBassBoom(soundName);
+        }
+      } catch (e) {
+        console.log('Sound error, using BASS BOOM:', e);
+        createBassBoom(soundName);
+      }
+    }
+    
+    // Create HARD BASS BOOM using Web Audio API
+    function createBassBoom(soundName) {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Create multiple oscillators for rich bass sound
+        const oscillators = [];
+        const gainNodes = [];
+        
+        // Different bass frequencies for different sounds
+        let frequencies = [60, 80, 100]; // Deep bass range
+        let duration = 0.3;
+        
+        switch(soundName) {
+          case 'move':
+            frequencies = [90, 120, 150]; // Quick move boom
+            duration = 0.1;
+            break;
+          case 'rotate':
+            frequencies = [100, 140, 180]; // Rotate punch
+            duration = 0.15;
+            break;
+          case 'drop':
+            frequencies = [70, 100, 130]; // Drop thud
+            duration = 0.2;
+            break;
+          case 'lineClear':
+            frequencies = [80, 120, 160, 200]; // Line clear boom
+            duration = 0.4;
+            break;
+          case 'tetrisClear':
+            frequencies = [60, 90, 120, 150, 180]; // EPIC Tetris boom
+            duration = 0.8;
+            break;
+          case 'levelUp':
+            frequencies = [50, 75, 100, 125, 150]; // Level up fanfare
+            duration = 1.2;
+            break;
+          case 'gameOver':
+            frequencies = [40, 60, 80]; // Deep game over
+            duration = 1.5;
+            break;
+        }
+        
+        // Create multiple oscillators for rich bass
+        frequencies.forEach((freq, index) => {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          const filter = audioContext.createBiquadFilter();
+          
+          oscillator.connect(filter);
+          filter.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          // Set up oscillator
+          oscillator.type = 'sawtooth'; // Rich harmonics
+          oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+          
+          // Set up low-pass filter for bass
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(250, audioContext.currentTime);
+          filter.Q.setValueAtTime(1, audioContext.currentTime);
+          
+          // Set up gain envelope for punch
+          const now = audioContext.currentTime;
+          gainNode.gain.setValueAtTime(0, now);
+          gainNode.gain.linearRampToValueAtTime(0.9, now + 0.005); // Very quick attack
+          gainNode.gain.exponentialRampToValueAtTime(0.2, now + duration * 0.2); // Quick decay
+          gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Long release
+          
+          oscillator.start(now);
+          oscillator.stop(now + duration);
+          
+          oscillators.push(oscillator);
+          gainNodes.push(gainNode);
+        });
+        
+        // Add heavy distortion for extra punch
+        const distortion = audioContext.createWaveShaper();
+        const distortionGain = audioContext.createGain();
+        
+        // Create heavy distortion curve
+        const samples = 44100;
+        const curve = new Float32Array(samples);
+        const deg = Math.PI / 180;
+        
+        for (let i = 0; i < samples; i++) {
+          const x = (i * 2) / samples - 1;
+          curve[i] = ((3 + 50) * x * 50 * deg) / (Math.PI + 50 * Math.abs(x));
+        }
+        
+        distortion.curve = curve;
+        distortion.oversample = '4x';
+        
+        // Connect distortion
+        gainNodes.forEach(gainNode => {
+          gainNode.connect(distortion);
+        });
+        distortion.connect(distortionGain);
+        distortionGain.connect(audioContext.destination);
+        
+        distortionGain.gain.setValueAtTime(0.4, audioContext.currentTime);
+        
+        // Add reverb for epic sound
+        const convolver = audioContext.createConvolver();
+        const reverbGain = audioContext.createGain();
+        
+        // Create simple reverb impulse
+        const length = audioContext.sampleRate * 0.5;
+        const impulse = audioContext.createBuffer(2, length, audioContext.sampleRate);
+        
+        for (let channel = 0; channel < 2; channel++) {
+          const channelData = impulse.getChannelData(channel);
+          for (let i = 0; i < length; i++) {
+            channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
+          }
+        }
+        
+        convolver.buffer = impulse;
+        
+        distortionGain.connect(convolver);
+        convolver.connect(reverbGain);
+        reverbGain.connect(audioContext.destination);
+        
+        reverbGain.gain.setValueAtTime(0.2, audioContext.currentTime);
+        
+      } catch (e) {
+        console.log('Web Audio API not available for BASS BOOM');
+      }
+    }
+    
+    // Game state
+    let gameState = {
+      sessionId: null,
+      board: Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0)),
+      currentPiece: null,
+      nextPiece: null,
+      score: 0,
+      level: 1,
+      lines: 0,
+      dropTime: 0,
+      dropInterval: 1000,
+      aiDifficulty: 0.5,
+      aiParams: {},
+      gameStarted: false,
+      gameOver: false,
+      paused: false
+    };
+    
+    // Initialize game session
+    async function initGame() {
+      try {
+        const response = await fetch('/tetris/start-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        gameState.sessionId = data.session_id;
+        gameState.aiDifficulty = data.ai_difficulty;
+        gameState.aiParams = data.ai_params;
+        
+        document.getElementById('ai-difficulty').textContent = gameState.aiDifficulty.toFixed(2);
+        document.getElementById('drop-speed').textContent = gameState.aiParams.drop_speed?.toFixed(1) || '1.0';
+        
+        gameState.gameStarted = true;
+        document.getElementById('loading').style.display = 'none';
+        console.log('Tetris initialized with AI difficulty:', gameState.aiDifficulty);
+      } catch (error) {
+        console.error('Failed to initialize Tetris:', error);
+        gameState.gameStarted = true;
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+    
+    // Send game action to backend
+    async function sendGameAction(actionType, actionData) {
+      if (!gameState.sessionId || !gameState.gameStarted) return;
+      
+      try {
+        await fetch('/tetris/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: gameState.sessionId,
+            action_type: actionType,
+            action_data: actionData,
+            timestamp: Date.now()
+          })
+        });
+      } catch (error) {
+        console.error('Failed to send Tetris action:', error);
+      }
+    }
+    
+    // Create new piece
+    function createPiece() {
+      const pieceData = PIECES[Math.floor(Math.random() * PIECES.length)];
+      return {
+        shape: pieceData.shape,
+        color: pieceData.color,
+        x: Math.floor(BOARD_WIDTH / 2) - Math.floor(pieceData.shape[0].length / 2),
+        y: 0
+      };
+    }
+    
+    // Draw piece
+    function drawPiece(piece, offsetX = 0, offsetY = 0) {
+      ctx.fillStyle = piece.color;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = piece.color;
+      
+      for (let y = 0; y < piece.shape.length; y++) {
+        for (let x = 0; x < piece.shape[y].length; x++) {
+          if (piece.shape[y][x]) {
+            ctx.fillRect(
+              (piece.x + x + offsetX) * BLOCK_SIZE,
+              (piece.y + y + offsetY) * BLOCK_SIZE,
+              BLOCK_SIZE - 1,
+              BLOCK_SIZE - 1
+            );
+          }
+        }
+      }
+      ctx.shadowBlur = 0;
+    }
+    
+    // Check collision
+    function checkCollision(piece, offsetX = 0, offsetY = 0) {
+      for (let y = 0; y < piece.shape.length; y++) {
+        for (let x = 0; x < piece.shape[y].length; x++) {
+          if (piece.shape[y][x]) {
+            const newX = piece.x + x + offsetX;
+            const newY = piece.y + y + offsetY;
+            
+            if (newX < 0 || newX >= BOARD_WIDTH || 
+                newY >= BOARD_HEIGHT || 
+                (newY >= 0 && gameState.board[newY][newX])) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+    
+    // Place piece on board
+    function placePiece(piece) {
+      for (let y = 0; y < piece.shape.length; y++) {
+        for (let x = 0; x < piece.shape[y].length; x++) {
+          if (piece.shape[y][x]) {
+            const boardY = piece.y + y;
+            const boardX = piece.x + x;
+            if (boardY >= 0) {
+              gameState.board[boardY][boardX] = piece.color;
+            }
+          }
+        }
+      }
+      
+      clearLines();
+      
+      sendGameAction('piece_placed', {
+        piece_type: piece.shape,
+        position: { x: piece.x, y: piece.y },
+        score: gameState.score
+      });
+    }
+    
+    // Clear completed lines with EPIC BASS BOOM
+    function clearLines() {
+      let linesCleared = 0;
+      
+      for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
+        if (gameState.board[y].every(cell => cell !== 0)) {
+          gameState.board.splice(y, 1);
+          gameState.board.unshift(Array(BOARD_WIDTH).fill(0));
+          linesCleared++;
+          y++;
+        }
+      }
+      
+      if (linesCleared > 0) {
+        gameState.lines += linesCleared;
+        
+        let lineScore = 0;
+        switch(linesCleared) {
+          case 1: lineScore = 100 * gameState.level; break;
+          case 2: lineScore = 300 * gameState.level; break;
+          case 3: lineScore = 500 * gameState.level; break;
+          case 4: lineScore = 800 * gameState.level; break;
+        }
+        
+        gameState.score += lineScore;
+        
+        if (linesCleared === 4) {
+          playSound('tetrisClear'); // EPIC TETRIS BOOM!
+        } else {
+          playSound('lineClear'); // Line clear boom
+        }
+        
+        const newLevel = Math.floor(gameState.lines / 10) + 1;
+        if (newLevel > gameState.level) {
+          gameState.level = newLevel;
+          gameState.dropInterval = Math.max(100, 1000 - (gameState.level - 1) * 100);
+          playSound('levelUp'); // Level up fanfare boom
+        }
+        
+        updateDisplay();
+        
+        sendGameAction('lines_cleared', {
+          lines: linesCleared,
+          score: gameState.score,
+          level: gameState.level
+        });
+      }
+    }
+    
+    // Rotate piece
+    function rotatePiece(piece) {
+      const rotated = {
+        shape: piece.shape[0].map((_, i) => 
+          piece.shape.map(row => row[i]).reverse()
+        ),
+        color: piece.color,
+        x: piece.x,
+        y: piece.y
+      };
+      
+      if (!checkCollision(rotated)) {
+        playSound('rotate'); // Rotate boom
+        return rotated;
+      }
+      return piece;
+    }
+    
+    // Move piece
+    function movePiece(piece, dx, dy) {
+      const moved = { ...piece, x: piece.x + dx, y: piece.y + dy };
+      if (!checkCollision(moved)) {
+        if (dx !== 0) playSound('move'); // Move boom
+        return moved;
+      }
+      return piece;
+    }
+    
+    // Hard drop
+    function hardDrop(piece) {
+      let dropped = piece;
+      while (!checkCollision(dropped, 0, 1)) {
+        dropped = movePiece(dropped, 0, 1);
+      }
+      playSound('drop'); // Drop thud boom
+      return dropped;
+    }
+    
+    // Draw board
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      for (let y = 0; y < BOARD_HEIGHT; y++) {
+        for (let x = 0; x < BOARD_WIDTH; x++) {
+          if (gameState.board[y][x]) {
+            ctx.fillStyle = gameState.board[y][x];
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = gameState.board[y][x];
+            ctx.fillRect(
+              x * BLOCK_SIZE,
+              y * BLOCK_SIZE,
+              BLOCK_SIZE - 1,
+              BLOCK_SIZE - 1
+            );
+            ctx.shadowBlur = 0;
+          }
+        }
+      }
+      
+      if (gameState.currentPiece) {
+        drawPiece(gameState.currentPiece);
+      }
+      
+      if (gameState.currentPiece) {
+        const ghost = hardDrop(gameState.currentPiece);
+        ctx.globalAlpha = 0.3;
+        drawPiece(ghost);
+        ctx.globalAlpha = 1;
+      }
+    }
+    
+    // Draw next piece
+    function drawNext() {
+      nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+      
+      if (gameState.nextPiece) {
+        nextCtx.fillStyle = gameState.nextPiece.color;
+        const offsetX = (nextCanvas.width - gameState.nextPiece.shape[0].length * 20) / 2;
+        const offsetY = (nextCanvas.height - gameState.nextPiece.shape.length * 20) / 2;
+        
+        for (let y = 0; y < gameState.nextPiece.shape.length; y++) {
+          for (let x = 0; x < gameState.nextPiece.shape[y].length; x++) {
+            if (gameState.nextPiece.shape[y][x]) {
+              nextCtx.fillRect(
+                offsetX + x * 20,
+                offsetY + y * 20,
+                18,
+                18
+              );
+            }
+          }
+        }
+      }
+    }
+    
+    // Update display
+    function updateDisplay() {
+      document.getElementById('score').textContent = gameState.score;
+      document.getElementById('level').textContent = gameState.level;
+      document.getElementById('lines').textContent = gameState.lines;
+    }
+    
+    // Game over
+    function gameOver() {
+      gameState.gameOver = true;
+      playSound('gameOver'); // Deep game over boom
+      document.getElementById('final-score').textContent = gameState.score;
+      document.getElementById('game-over').style.display = 'block';
+      
+      sendGameAction('game_over', {
+        final_score: gameState.score,
+        level: gameState.level,
+        lines: gameState.lines
+      });
+    }
+    
+    // Restart game
+    function restartGame() {
+      gameState.board = Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0));
+      gameState.score = 0;
+      gameState.level = 1;
+      gameState.lines = 0;
+      gameState.dropInterval = 1000;
+      gameState.gameOver = false;
+      gameState.paused = false;
+      
+      gameState.currentPiece = createPiece();
+      gameState.nextPiece = createPiece();
+      
+      document.getElementById('game-over').style.display = 'none';
+      updateDisplay();
+    }
+    
+    // Game loop
+    function gameLoop(timestamp) {
+      if (gameState.gameOver || gameState.paused) {
+        requestAnimationFrame(gameLoop);
+        return;
+      }
+      
+      if (timestamp - gameState.dropTime > gameState.dropInterval) {
+        if (gameState.currentPiece) {
+          const moved = movePiece(gameState.currentPiece, 0, 1);
+          if (moved === gameState.currentPiece) {
+            placePiece(gameState.currentPiece);
+            gameState.currentPiece = gameState.nextPiece;
+            gameState.nextPiece = createPiece();
+            
+            if (checkCollision(gameState.currentPiece)) {
+              gameOver();
+              return;
+            }
+          } else {
+            gameState.currentPiece = moved;
+          }
+        }
+        gameState.dropTime = timestamp;
+      }
+      
+      drawBoard();
+      drawNext();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    // Keyboard controls
+    document.addEventListener('keydown', (e) => {
+      if (gameState.gameOver || !gameState.currentPiece) return;
+      
+      switch(e.key) {
+        case 'ArrowLeft':
+          gameState.currentPiece = movePiece(gameState.currentPiece, -1, 0);
+          sendGameAction('move', { direction: 'left' });
+          break;
+        case 'ArrowRight':
+          gameState.currentPiece = movePiece(gameState.currentPiece, 1, 0);
+          sendGameAction('move', { direction: 'right' });
+          break;
+        case 'ArrowDown':
+          gameState.currentPiece = movePiece(gameState.currentPiece, 0, 1);
+          sendGameAction('move', { direction: 'down' });
+          break;
+        case 'ArrowUp':
+          gameState.currentPiece = rotatePiece(gameState.currentPiece);
+          sendGameAction('rotate', {});
+          break;
+        case ' ':
+          e.preventDefault();
+          gameState.currentPiece = hardDrop(gameState.currentPiece);
+          sendGameAction('hard_drop', {});
+          break;
+        case 'p':
+        case 'P':
+          gameState.paused = !gameState.paused;
+          break;
+      }
+    });
+    
+    // Initialize and start game
+    initGame().then(() => {
+      gameState.currentPiece = createPiece();
+      gameState.nextPiece = createPiece();
+      updateDisplay();
+      gameLoop(0);
+    });
+  </script>
+</body>
+</html>
