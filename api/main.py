@@ -24,7 +24,7 @@ app.include_router(leaderboard.router)
 
 @app.on_event("startup")
 async def startup_event():
-    db.init_db()
+    db.init_database()
     print("Database initialized successfully")
 
 @app.get("/")
