@@ -1,41 +1,41 @@
-# 🎮 Satoshi's Arcade MCP
+# Satoshi's Arcade MCP
 
-> **An arcade that learns from you — every move makes it smarter.**
+> An arcade that learns from you — every move makes it smarter.
 
 A browser-based AI arcade showcasing the fusion of retro gameplay, blockchain-inspired data structures, and machine learning. Experience games like Ping-Pong and Tetris with AI opponents that adapt and learn from your gameplay patterns.
 
-![Arcade Demo](https://img.shields.io/badge/Live%20Demo-🚀%20Play%20Now-blue?style=for-the-badge&logo=github)
-![Python](https://img.shields.io/badge/Python-3.8+-green?style=for-the-badge&logo=python)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-red?style=for-the-badge&logo=fastapi)
-![AI](https://img.shields.io/badge/AI-Reinforcement%20Learning-purple?style=for-the-badge&logo=tensorflow)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Play%20Now-blue?style=for-the-badge&logo=github)](https://satoshis-arcade-mcp.onrender.com)
+[![Python](https://img.shields.io/badge/Python-3.8+-green?style=for-the-badge&logo=python)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-red?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
+[![AI](https://img.shields.io/badge/AI-Reinforcement%20Learning-purple?style=for-the-badge&logo=tensorflow)](https://tensorflow.org)
 
-## 🌟 Features
+## Features
 
-### 🎯 **AI-Powered Gameplay**
+### AI-Powered Gameplay
 - **Adaptive AI**: Opponents learn from your moves and adapt difficulty
 - **Reinforcement Learning**: AI improves through gameplay data
 - **Model Context Protocol**: AI memory layer for contextual performance
 - **Real-time Learning**: AI adjusts strategy during gameplay
 
-### 🎮 **Retro Games**
-- **🏓 Ping-Pong**: Classic paddle game with AI opponent
-- **🧱 Tetris**: Block-stacking puzzle with AI analysis
-- **🔊 Hard Bass Boom**: Epic sound effects with Web Audio API
-- **📱 PWA Ready**: Play on mobile and desktop
+### Retro Games
+- **Ping-Pong**: Classic paddle game with AI opponent
+- **Tetris**: Block-stacking puzzle with AI analysis
+- **Hard Bass Boom**: Epic sound effects with Web Audio API
+- **PWA Ready**: Play on mobile and desktop
 
-### 🎨 **Immersive Design**
+### Immersive Design
 - **Neon-Bauhaus**: Glowing UI with IBM Plex Sans typography
 - **Responsive Layout**: Works on iPhone, desktop, and tablets
 - **Motion Effects**: Smooth animations and visual feedback
 - **Dark Theme**: Easy on the eyes for extended play
 
-### 🧠 **AI Architecture**
+### AI Architecture
 - **Modular Intelligence**: Easy to extend with new games
 - **SQLite Database**: Lightweight storage for player data
 - **Session Management**: Track gameplay across sessions
 - **Performance Analytics**: Detailed AI learning metrics
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.8+
@@ -65,7 +65,7 @@ python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 http://localhost:8000
 ```
 
-## 🎮 How to Play
+## How to Play
 
 ### Ping-Pong
 - **Move mouse** to control your paddle
@@ -79,30 +79,30 @@ http://localhost:8000
 - **P** to pause
 - **AI analyzes** your block placement efficiency
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 satoshis-arcade-mcp/
-├── 🧠 ai/                    # AI intelligence engine
+├── ai/                    # AI intelligence engine
 │   └── difficulty_agent.py   # Reinforcement learning agent
-├── 🔌 api/                   # FastAPI backend
+├── api/                   # FastAPI backend
 │   ├── main.py              # Application entry point
 │   └── routes/              # Game API endpoints
 │       ├── pingpong.py      # Ping-Pong game logic
 │       ├── tetris.py        # Tetris game logic
 │       └── leaderboard.py   # Score tracking
-├── 🎨 frontend/              # Web interface
+├── frontend/              # Web interface
 │   ├── arcade/              # Main menu
 │   ├── pingpong/            # Ping-Pong game
 │   ├── tetris/              # Tetris game
 │   ├── manifest.json        # PWA configuration
 │   └── service-worker.js    # Offline capabilities
-├── 💾 database.py            # SQLite database management
-├── 🚀 render.yaml            # Deployment configuration
-└── 📦 requirements.txt       # Python dependencies
+├── database.py            # SQLite database management
+├── render.yaml            # Deployment configuration
+└── requirements.txt       # Python dependencies
 ```
 
-## 🧠 AI Learning System
+## AI Learning System
 
 ### Reinforcement Learning
 The AI uses a custom reinforcement learning algorithm that:
@@ -117,7 +117,7 @@ The AI uses a custom reinforcement learning algorithm that:
 - **Cross-Session Learning**: AI remembers you between games
 - **Performance Metrics**: Tracks learning progress
 
-## 🎵 Sound System
+## Sound System
 
 ### Hard Bass Boom Effects
 - **Web Audio API**: Advanced audio synthesis
@@ -131,7 +131,7 @@ The AI uses a custom reinforcement learning algorithm that:
 - **Line Clear**: Epic Tetris completion sounds
 - **Level Up**: Victory fanfare with multiple frequencies
 
-## 🌐 Deployment
+## Deployment
 
 ### Render.com (Recommended)
 1. Connect your GitHub repository to Render
@@ -147,7 +147,7 @@ pip install -r requirements.txt
 uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
-## 🔧 Development
+## Development
 
 ### Adding New Games
 1. Create game logic in `api/routes/`
@@ -160,7 +160,7 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000
 - Adjust difficulty curves in game routes
 - Add new performance metrics to database schema
 
-## 📊 Performance Metrics
+## Performance Metrics
 
 The AI tracks various metrics:
 - **Win/Loss Ratios**: Overall performance
@@ -168,7 +168,7 @@ The AI tracks various metrics:
 - **Strategy Patterns**: Common move sequences
 - **Difficulty Progression**: Learning curve analysis
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -176,38 +176,38 @@ The AI tracks various metrics:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 🛣️ Roadmap
+## Roadmap
 
-### Phase 1 ✅
+### Phase 1 (Completed)
 - [x] Deploy Ping-Pong and Tetris
 - [x] Implement AI learning system
 - [x] Add sound effects
 - [x] Create PWA functionality
 
-### Phase 2 🚧
+### Phase 2 (In Progress)
 - [ ] Integrate Bitcoin/Stacks tokenization
 - [ ] Add more games (Crypto Brick Breaker, Hash Puzzle Arena)
 - [ ] Implement global leaderboards
 - [ ] Add multiplayer functionality
 
-### Phase 3 🔮
+### Phase 3 (Planned)
 - [ ] Launch Satoshi's Arcade Network (SAN)
 - [ ] Decentralized AI gaming protocol
 - [ ] Cross-platform mobile apps
 - [ ] NFT integration for achievements
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **IBM Plex Sans** for the beautiful typography
 - **FastAPI** for the robust backend framework
 - **Web Audio API** for the epic sound system
 - **SQLite** for lightweight data storage
 
-## 🔗 Links
+## Links
 
 - **Live Demo**: [Play Now](https://satoshis-arcade-mcp.onrender.com)
 - **GitHub**: [polydeuces32/satoshis-arcade-mcp](https://github.com/polydeuces32/satoshis-arcade-mcp)
@@ -215,6 +215,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built with ❤️ by [Giancarlo Vizhnay](https://github.com/polydeuces32)**
+**Built with passion by [Giancarlo Vizhnay](https://github.com/polydeuces32)**
 
 *"The code you write makes you a programmer. The code you delete makes you a good one. The code you don't write makes you a great one."*

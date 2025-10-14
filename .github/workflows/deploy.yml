@@ -25,14 +25,14 @@ jobs:
     
     - name: Run tests
       run: |
-        python -c "import api.main; print('✅ API imports successfully')"
-        python -c "import database; print('✅ Database module imports successfully')"
-        python -c "import ai.difficulty_agent; print('✅ AI module imports successfully')"
+        python -c "import api.main; print('API imports successfully')"
+        python -c "import database; print('Database module imports successfully')"
+        python -c "import ai.difficulty_agent; print('AI module imports successfully')"
     
     - name: Test server startup
       run: |
         timeout 10s python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 || true
-        echo "✅ Server startup test completed"
+        echo "Server startup test completed"
 
   deploy:
     needs: test
@@ -44,6 +44,6 @@ jobs:
     
     - name: Deploy to Render
       run: |
-        echo "🚀 Deployment triggered for main branch"
+        echo "Deployment triggered for main branch"
         echo "Render will automatically deploy from GitHub"
-        echo "✅ Deployment pipeline completed"
+        echo "Deployment pipeline completed"
