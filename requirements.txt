@@ -5,3 +5,5 @@ jinja2
 aiofiles
 pydantic
 python-dotenv
+numpy
+scikit-learn
