@@ -4,10 +4,7 @@ from typing import Dict, List, Optional
 import os
 import json
 
-# Import our database
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from database import db
+from api.database import db
 
 router = APIRouter(prefix="/leaderboard", tags=["Leaderboard"])
 
