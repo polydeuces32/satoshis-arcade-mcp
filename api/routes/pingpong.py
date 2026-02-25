@@ -1,4 +1,4 @@
-import numpy as np
+import random
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -7,16 +7,17 @@ import os
 import uuid
 from datetime import datetime
 
-# Import our AI agent and database
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from ai.difficulty_agent import pingpong_agent
-from database import db
+from api.ai.difficulty_agent import pingpong_agent
+from api.database import db
 
 router = APIRouter(prefix="/pingpong", tags=["Ping Pong"])
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-FRONTEND_PATH = os.path.join(BASE_DIR, "frontend", "pingpong", "index.html")
+# Prefer api/static (Vercel bundle), else frontend/ at project root
+_API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ROOT = os.path.dirname(_API_DIR)
+_STATIC_FILE = os.path.join(_API_DIR, "static", "pingpong", "index.html")
+_ROOT_FILE = os.path.join(_ROOT, "frontend", "pingpong", "index.html")
+FRONTEND_PATH = _STATIC_FILE if os.path.exists(_STATIC_FILE) else _ROOT_FILE
 
 # Game state management
 active_sessions = {}
@@ -101,7 +102,10 @@ def process_game_action(action: GameAction):
     
     session = active_sessions[action.session_id]
     
-    # Update game state based on action
+    # Update game state from client (ball position, paddles) so AI uses current state
+    for key in ('ball_x', 'ball_y', 'ball_speed_x', 'ball_speed_y', 'player_y', 'ai_y'):
+        if key in action.action_data and action.action_data[key] is not None:
+            session.game_state[key] = action.action_data[key]
     if action.action_type == "paddle_move":
         session.game_state['player_y'] = action.action_data.get('y', session.game_state['player_y'])
         
@@ -113,9 +117,15 @@ def process_game_action(action: GameAction):
             outcome="ball_hit",
             game_context=session.game_state
         )
-        
-        # Save learning data
-        pingpong_agent.save_learning_data(learning_data)
+        db.record_ai_feedback(
+            session.game_session_id,
+            "pingpong",
+            learning_data.get("player_action", ""),
+            learning_data.get("ai_response", ""),
+            learning_data.get("outcome", ""),
+            learning_data.get("difficulty_level", 0.5),
+            learning_data,
+        )
         
     elif action.action_type == "score":
         if action.action_data.get('scorer') == 'player':
@@ -151,12 +161,12 @@ def calculate_ai_move(session: GameSession) -> Dict:
         
         # Apply prediction accuracy based on difficulty
         prediction_accuracy = ai_params['prediction_accuracy']
-        if np.random.random() > prediction_accuracy:
+        if random.random() > prediction_accuracy:
             # Add some randomness to make it less perfect
-            predicted_y += np.random.normal(0, 50)
+            predicted_y += random.gauss(0, 50)
         
-        # Clamp prediction to canvas bounds
-        predicted_y = max(50, min(450, predicted_y))
+        # Clamp prediction to canvas bounds (canvas height 500, paddle height 100 → ai_y in [0, 400])
+        predicted_y = max(50, min(400, predicted_y))
         
         # Move AI paddle towards predicted position
         current_ai_y = session.game_state['ai_y']
@@ -171,9 +181,9 @@ def calculate_ai_move(session: GameSession) -> Dict:
             new_ai_y = current_ai_y
             
     else:  # Ball moving away from AI
-        # Move towards center
+        # Move towards center (canvas 800x500 → center y = 250)
         current_ai_y = session.game_state['ai_y']
-        center_y = 200
+        center_y = 250
         paddle_speed = ai_params['paddle_speed'] * 0.5  # Slower when ball is away
         
         if abs(center_y - current_ai_y) > 10:
@@ -226,11 +236,19 @@ def end_game_session(outcome: GameOutcome):
         }
     )
     
-    pingpong_agent.save_learning_data(learning_data)
-    
+    db.record_ai_feedback(
+        session.game_session_id,
+        "pingpong",
+        learning_data.get("player_action", ""),
+        learning_data.get("ai_response", ""),
+        learning_data.get("outcome", ""),
+        learning_data.get("difficulty_level", 0.5),
+        learning_data,
+    )
+
     # Remove from active sessions
     del active_sessions[outcome.session_id]
-    
+
     return {
         "message": "Game session ended",
         "final_score": outcome.final_score,

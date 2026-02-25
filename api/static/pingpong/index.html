@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ping-Pong AI | Satoshi's Arcade MCP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/frontend/manifest.json">
+  <meta name="theme-color" content="#0a0a0f">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap');
+    body { 
+      margin: 0; 
+      overflow: hidden; 
+      background: radial-gradient(circle at center, #0a0a0f 0%, #000 100%);
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+    canvas { 
+      display: block; 
+      margin: auto; 
+      background: rgba(10,10,15,0.9); 
+      box-shadow: 0 0 40px rgba(0,255,224,0.2) inset;
+      border: 1px solid rgba(0,255,224,0.3);
+    }
+    #hud {
+      position: fixed;
+      top: 10px;
+      width: 100%;
+      text-align: center;
+      color: #00ffe0;
+      font-family: 'IBM Plex Sans', sans-serif;
+      letter-spacing: 1px;
+      z-index: 10;
+    }
+    #ai-info {
+      position: fixed;
+      top: 50px;
+      right: 20px;
+      color: #e91e63;
+      font-size: 12px;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(233,30,99,0.3);
+    }
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #1f6feb;
+      font-size: 14px;
+      text-align: center;
+    }
+    .loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #00ffe0;
+      font-size: 18px;
+      z-index: 100;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(45deg,#111 25%,transparent 25%) 0 0,
+                  linear-gradient(-45deg,#111 25%,transparent 25%) 0 0;
+      background-size: 40px 40px;
+      opacity: 0.15;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <span>🏓 Satoshi's AI Pong</span>
+    <div id="score">0 : 0</div>
+  </div>
+  
+  <div id="ai-info">
+    <div>AI Difficulty: <span id="ai-difficulty">0.5</span></div>
+    <div>Prediction: <span id="ai-prediction">50%</span></div>
+    <div>Games Played: <span id="games-played">0</span></div>
+  </div>
+  
+  <div id="controls">
+    Move mouse to control paddle • AI learns from your moves
+  </div>
+  
+  <div class="loading" id="loading">Initializing AI...</div>
+  
+  <canvas id="pong" width="800" height="500"></canvas>
+  
+  <!-- Bass Boom Sound Effects -->
+  <audio id="hit" preload="auto"></audio>
+  <audio id="score-sound" preload="auto"></audio>
+  <audio id="wall-hit" preload="auto"></audio>
+  <audio id="game-start" preload="auto"></audio>
+  <audio id="victory" preload="auto"></audio>
+
+  <script>
+    const canvas = document.getElementById('pong');
+    const ctx = canvas.getContext('2d');
+    const paddleHeight = 100, paddleWidth = 10;
+    
+    // Game state
+    let gameState = {
+      sessionId: null,
+      playerY: canvas.height/2 - paddleHeight/2,
+      aiY: canvas.height/2 - paddleHeight/2,
+      ballX: canvas.width/2,
+      ballY: canvas.height/2,
+      ballSpeedX: 5,
+      ballSpeedY: 5,
+      initialBallSpeedX: 5,
+      initialBallSpeedY: 5,
+      playerScore: 0,
+      aiScore: 0,
+      aiDifficulty: 0.5,
+      aiParams: {},
+      gameStarted: false,
+      lastHitTime: 0,
+      gameOver: false
+    };
+    
+    // Sound management with HARD BASS BOOM
+    const sounds = {
+      hit: document.getElementById('hit'),
+      score: document.getElementById('score-sound'),
+      wallHit: document.getElementById('wall-hit'),
+      gameStart: document.getElementById('game-start'),
+      victory: document.getElementById('victory')
+    };
+    
+    // Play HARD BASS BOOM sound
+    function playSound(soundName) {
+      try {
+        const sound = sounds[soundName];
+        if (sound) {
+          sound.currentTime = 0;
+          sound.play().catch(e => {
+            console.log('Sound play failed, using BASS BOOM:', e);
+            createBassBoom(soundName);
+          });
+        } else {
+          createBassBoom(soundName);
+        }
+      } catch (e) {
+        console.log('Sound error, using BASS BOOM:', e);
+        createBassBoom(soundName);
+      }
+    }
+    
+    // Create HARD BASS BOOM using Web Audio API
+    function createBassBoom(soundName) {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Create multiple oscillators for rich bass sound
+        const oscillators = [];
+        const gainNodes = [];
+        
+        // Different bass frequencies for different sounds
+        let frequencies = [60, 80, 100]; // Deep bass range
+        let duration = 0.3;
+        
+        switch(soundName) {
+          case 'hit':
+            frequencies = [80, 120, 160]; // Punchy hit
+            duration = 0.2;
+            break;
+          case 'score':
+            frequencies = [60, 90, 120]; // Deep score boom
+            duration = 0.4;
+            break;
+          case 'wallHit':
+            frequencies = [70, 100, 140]; // Wall bounce
+            duration = 0.15;
+            break;
+          case 'gameStart':
+            frequencies = [50, 75, 100]; // Epic start
+            duration = 0.6;
+            break;
+          case 'victory':
+            frequencies = [40, 60, 80, 100]; // Victory fanfare
+            duration = 1.0;
+            break;
+        }
+        
+        // Create multiple oscillators for rich bass
+        frequencies.forEach((freq, index) => {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          const filter = audioContext.createBiquadFilter();
+          
+          oscillator.connect(filter);
+          filter.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          // Set up oscillator
+          oscillator.type = 'sawtooth'; // Rich harmonics
+          oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+          
+          // Set up low-pass filter for bass
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(200, audioContext.currentTime);
+          filter.Q.setValueAtTime(1, audioContext.currentTime);
+          
+          // Set up gain envelope for punch
+          const now = audioContext.currentTime;
+          gainNode.gain.setValueAtTime(0, now);
+          gainNode.gain.linearRampToValueAtTime(0.8, now + 0.01); // Quick attack
+          gainNode.gain.exponentialRampToValueAtTime(0.1, now + duration * 0.3); // Quick decay
+          gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Long release
+          
+          oscillator.start(now);
+          oscillator.stop(now + duration);
+          
+          oscillators.push(oscillator);
+          gainNodes.push(gainNode);
+        });
+        
+        // Add some distortion for extra punch
+        const distortion = audioContext.createWaveShaper();
+        const distortionGain = audioContext.createGain();
+        
+        // Create distortion curve
+        const samples = 44100;
+        const curve = new Float32Array(samples);
+        const deg = Math.PI / 180;
+        
+        for (let i = 0; i < samples; i++) {
+          const x = (i * 2) / samples - 1;
+          curve[i] = ((3 + 20) * x * 20 * deg) / (Math.PI + 20 * Math.abs(x));
+        }
+        
+        distortion.curve = curve;
+        distortion.oversample = '4x';
+        
+        // Connect distortion
+        gainNodes.forEach(gainNode => {
+          gainNode.connect(distortion);
+        });
+        distortion.connect(distortionGain);
+        distortionGain.connect(audioContext.destination);
+        
+        distortionGain.gain.setValueAtTime(0.3, audioContext.currentTime);
+        
+      } catch (e) {
+        console.log('Web Audio API not available for BASS BOOM');
+      }
+    }
+    
+    // Initialize game session
+    async function initGame() {
+      try {
+        const response = await fetch('/pingpong/start-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        gameState.sessionId = data.session_id;
+        gameState.aiDifficulty = data.ai_difficulty;
+        gameState.aiParams = data.ai_params;
+        
+        document.getElementById('ai-difficulty').textContent = gameState.aiDifficulty.toFixed(2);
+        document.getElementById('ai-prediction').textContent = Math.round(gameState.aiParams.prediction_accuracy * 100) + '%';
+        
+        document.getElementById('loading').style.display = 'none';
+        gameState.gameStarted = true;
+        
+        // Play epic game start BASS BOOM
+        playSound('gameStart');
+        
+        console.log('Game initialized with AI difficulty:', gameState.aiDifficulty);
+      } catch (error) {
+        console.error('Failed to initialize game:', error);
+        document.getElementById('loading').textContent = 'Failed to connect to AI. Playing offline...';
+        setTimeout(() => {
+          document.getElementById('loading').style.display = 'none';
+          gameState.gameStarted = true;
+          playSound('gameStart');
+        }, 2000);
+      }
+    }
+    
+    // Send game action to backend (include ball state so server AI can compute)
+    async function sendGameAction(actionType, actionData) {
+      if (!gameState.sessionId || !gameState.gameStarted) return;
+      const payload = {
+        ...actionData,
+        ball_x: gameState.ballX,
+        ball_y: gameState.ballY,
+        ball_speed_x: gameState.ballSpeedX,
+        ball_speed_y: gameState.ballSpeedY,
+        player_y: gameState.playerY,
+        ai_y: gameState.aiY
+      };
+      try {
+        const response = await fetch('/pingpong/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: gameState.sessionId,
+            action_type: actionType,
+            action_data: payload,
+            timestamp: Date.now()
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.ai_move) {
+          gameState.aiY = data.ai_move.ai_y;
+        }
+        
+        if (data.scores) {
+          gameState.playerScore = data.scores.player;
+          gameState.aiScore = data.scores.ai;
+          updateScoreDisplay();
+        }
+        
+      } catch (error) {
+        console.error('Failed to send game action:', error);
+      }
+    }
+    
+    // End session and record result (then reset and start new session)
+    async function endSessionAndReset() {
+      try {
+        await fetch('/pingpong/end-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: gameState.sessionId,
+            winner: gameState.playerScore > gameState.aiScore ? 'player' : (gameState.aiScore > gameState.playerScore ? 'ai' : 'ongoing'),
+            final_score: { player: gameState.playerScore, ai: gameState.aiScore },
+            game_duration: 0,
+            ai_performance: { difficulty: gameState.aiDifficulty }
+          })
+        });
+      } catch (e) {
+        console.error('End session failed:', e);
+      }
+      resetGame();
+      await initGame();
+    }
+    
+    // Update score display
+    function updateScoreDisplay() {
+      document.getElementById('score').textContent = `${gameState.playerScore} : ${gameState.aiScore}`;
+      
+      if (gameState.playerScore >= 5 || gameState.aiScore >= 5) {
+        gameState.gameOver = true;
+        playSound('victory');
+        setTimeout(() => {
+          alert(`Game Over! Final Score: ${gameState.playerScore} - ${gameState.aiScore}`);
+          endSessionAndReset();
+        }, 1000);
+      }
+    }
+    
+    // Reset entire game
+    function resetGame() {
+      gameState.playerScore = 0;
+      gameState.aiScore = 0;
+      gameState.gameOver = false;
+      resetBall();
+      updateScoreDisplay();
+    }
+    
+    // Enhanced AI behavior
+    function updateAI() {
+      if (!gameState.gameStarted || gameState.gameOver) return;
+      
+      const aiParams = gameState.aiParams;
+      const ballX = gameState.ballX;
+      const ballY = gameState.ballY;
+      const ballSpeedX = gameState.ballSpeedX;
+      const ballSpeedY = gameState.ballSpeedY;
+      
+      if (ballSpeedX > 0) {
+        const timeToPaddle = (canvas.width - ballX) / ballSpeedX;
+        let predictedY = ballY + (ballSpeedY * timeToPaddle);
+        
+        const predictionAccuracy = aiParams.prediction_accuracy || 0.7;
+        if (Math.random() > predictionAccuracy) {
+          predictedY += (Math.random() - 0.5) * 100;
+        }
+        
+        predictedY = Math.max(50, Math.min(450, predictedY));
+        
+        const paddleSpeed = aiParams.paddle_speed || 3;
+        const currentAiY = gameState.aiY;
+        
+        if (Math.abs(predictedY - currentAiY) > 5) {
+          if (predictedY > currentAiY) {
+            gameState.aiY = Math.min(currentAiY + paddleSpeed, 400);
+          } else {
+            gameState.aiY = Math.max(currentAiY - paddleSpeed, 0);
+          }
+        }
+      } else {
+        const centerY = 200;
+        const paddleSpeed = (aiParams.paddle_speed || 3) * 0.5;
+        const currentAiY = gameState.aiY;
+        
+        if (Math.abs(centerY - currentAiY) > 10) {
+          if (centerY > currentAiY) {
+            gameState.aiY = Math.min(currentAiY + paddleSpeed, 400);
+          } else {
+            gameState.aiY = Math.max(currentAiY - paddleSpeed, 0);
+          }
+        }
+      }
+    }
+    
+    function drawRect(x, y, w, h, color, glow) {
+      ctx.shadowBlur = glow ? 20 : 0;
+      ctx.shadowColor = color;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, w, h);
+      ctx.shadowBlur = 0;
+    }
+    
+    function drawCircle(x, y, r, color, glow) {
+      ctx.shadowBlur = glow ? 15 : 0;
+      ctx.shadowColor = color;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI*2, false);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    
+    function update() {
+      if (!gameState.gameStarted || gameState.gameOver) return;
+      
+      gameState.ballX += gameState.ballSpeedX;
+      gameState.ballY += gameState.ballSpeedY;
+      
+      if (gameState.ballY <= 0 || gameState.ballY >= canvas.height) {
+        gameState.ballSpeedY = -gameState.ballSpeedY;
+        playSound('wallHit');
+      }
+      
+      if (gameState.ballX <= paddleWidth && 
+          gameState.ballY > gameState.playerY && 
+          gameState.ballY < gameState.playerY + paddleHeight) {
+        gameState.ballSpeedX = Math.abs(gameState.ballSpeedX);
+        playSound('hit');
+        
+        sendGameAction('ball_hit', {
+          ball_y: gameState.ballY,
+          paddle_y: gameState.playerY
+        });
+      }
+      
+      if (gameState.ballX >= canvas.width - paddleWidth && 
+          gameState.ballY > gameState.aiY && 
+          gameState.ballY < gameState.aiY + paddleHeight) {
+        gameState.ballSpeedX = -Math.abs(gameState.ballSpeedX);
+        playSound('hit');
+      }
+      
+      if (gameState.ballX < 0) {
+        gameState.aiScore++;
+        resetBall();
+        playSound('score');
+        sendGameAction('score', { scorer: 'ai' });
+        updateScoreDisplay();
+      }
+      
+      if (gameState.ballX > canvas.width) {
+        gameState.playerScore++;
+        resetBall();
+        playSound('score');
+        sendGameAction('score', { scorer: 'player' });
+        updateScoreDisplay();
+      }
+      
+      updateAI();
+    }
+    
+    function resetBall() {
+      gameState.ballX = canvas.width/2;
+      gameState.ballY = canvas.height/2;
+      gameState.ballSpeedX = Math.random() > 0.5 ? gameState.initialBallSpeedX : -gameState.initialBallSpeedX;
+      gameState.ballSpeedY = (Math.random() - 0.5) * gameState.initialBallSpeedY * 2;
+    }
+    
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      drawRect(0, gameState.playerY, paddleWidth, paddleHeight, '#1f6feb', true);
+      drawRect(canvas.width - paddleWidth, gameState.aiY, paddleWidth, paddleHeight, '#e91e63', true);
+      drawCircle(gameState.ballX, gameState.ballY, 8, '#fff', true);
+      
+      ctx.setLineDash([10, 10]);
+      ctx.strokeStyle = 'rgba(0,255,224,0.3)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width/2, 0);
+      ctx.lineTo(canvas.width/2, canvas.height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    
+    function gameLoop() {
+      update();
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    window.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      gameState.playerY = e.clientY - rect.top - paddleHeight/2;
+      
+      if (gameState.gameStarted) {
+        sendGameAction('paddle_move', { y: gameState.playerY });
+      }
+    });
+    
+    window.addEventListener('beforeunload', async () => {
+      if (gameState.sessionId && gameState.gameStarted) {
+        try {
+          await fetch('/pingpong/end-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: gameState.sessionId,
+              winner: gameState.playerScore > gameState.aiScore ? 'player' : 
+                      gameState.aiScore > gameState.playerScore ? 'ai' : 'ongoing',
+              final_score: { player: gameState.playerScore, ai: gameState.aiScore },
+              game_duration: Date.now() - gameState.lastHitTime,
+              ai_performance: { difficulty: gameState.aiDifficulty }
+            })
+          });
+        } catch (error) {
+          console.error('Failed to end game session:', error);
+        }
+      }
+    });
+    
+    initGame().then(() => {
+      gameLoop();
+    });
+  </script>
+</body>
+</html>

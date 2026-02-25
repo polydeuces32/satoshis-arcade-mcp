@@ -6,16 +6,17 @@ import os
 import uuid
 from datetime import datetime
 
-# Import our AI agent and database
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from ai.difficulty_agent import tetris_agent
-from database import db
+from api.ai.difficulty_agent import tetris_agent
+from api.database import db
 
 router = APIRouter(prefix="/tetris", tags=["Tetris"])
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-FRONTEND_PATH = os.path.join(BASE_DIR, "frontend", "tetris", "index.html")
+# Prefer api/static (Vercel bundle), else frontend/ at project root
+_API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ROOT = os.path.dirname(_API_DIR)
+_STATIC_FILE = os.path.join(_API_DIR, "static", "tetris", "index.html")
+_ROOT_FILE = os.path.join(_ROOT, "frontend", "tetris", "index.html")
+FRONTEND_PATH = _STATIC_FILE if os.path.exists(_STATIC_FILE) else _ROOT_FILE
 
 # Game state management
 active_sessions = {}
@@ -97,7 +98,8 @@ def process_tetris_action(action: TetrisAction):
         raise HTTPException(status_code=404, detail="Tetris session not found")
     
     session = active_sessions[action.session_id]
-    
+    learning_data = None
+
     # Update game state based on action
     if action.action_type == "move":
         direction = action.action_data.get('direction', '')
@@ -187,9 +189,18 @@ def process_tetris_action(action: TetrisAction):
             }
         )
     
-    # Save learning data
-    tetris_agent.save_learning_data(learning_data)
-    
+    # Save learning data to main DB when present
+    if learning_data is not None:
+        db.record_ai_feedback(
+            session.game_session_id,
+            "tetris",
+            learning_data.get("player_action", ""),
+            learning_data.get("ai_response", ""),
+            learning_data.get("outcome", ""),
+            learning_data.get("difficulty_level", 0.5),
+            learning_data,
+        )
+
     return {
         "ai_response": "action_recorded",
         "game_state": {
@@ -235,11 +246,19 @@ def end_tetris_session(outcome: TetrisOutcome):
         }
     )
     
-    tetris_agent.save_learning_data(learning_data)
-    
+    db.record_ai_feedback(
+        session.game_session_id,
+        "tetris",
+        learning_data.get("player_action", ""),
+        learning_data.get("ai_response", ""),
+        learning_data.get("outcome", ""),
+        learning_data.get("difficulty_level", 0.5),
+        learning_data,
+    )
+
     # Remove from active sessions
     del active_sessions[outcome.session_id]
-    
+
     return {
         "message": "Tetris session ended",
         "final_score": outcome.final_score,

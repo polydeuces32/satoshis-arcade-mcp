@@ -2,7 +2,16 @@
 name = "satoshis-arcade-mcp"
 version = "1.0.0"
 description = "AI-powered retro arcade with adaptive learning"
-requires-python = ">=3.10,<3.12"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "python-multipart",
+    "jinja2",
+    "aiofiles",
+    "pydantic>=2.0.0",
+    "python-dotenv",
+]
 
 [project.scripts]
 app = "api.main:app"
