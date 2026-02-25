@@ -3,52 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <title>Ping-Pong AI | Satoshi's Arcade MCP</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="/frontend/manifest.json">
   <meta name="theme-color" content="#0a0a0f">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap');
+    * { -webkit-tap-highlight-color: transparent; }
     body { 
       margin: 0; 
       overflow: hidden; 
       background: radial-gradient(circle at center, #0a0a0f 0%, #000 100%);
       font-family: 'IBM Plex Sans', sans-serif;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    .canvas-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: hidden;
     }
     canvas { 
       display: block; 
-      margin: auto; 
+      max-width: 100%;
+      max-height: calc(100vh - 80px);
+      max-height: calc(100dvh - 80px);
+      width: 800px;
+      height: 500px;
       background: rgba(10,10,15,0.9); 
       box-shadow: 0 0 40px rgba(0,255,224,0.2) inset;
       border: 1px solid rgba(0,255,224,0.3);
+      object-fit: contain;
     }
     #hud {
       position: fixed;
-      top: 10px;
+      top: max(10px, env(safe-area-inset-top));
       width: 100%;
       text-align: center;
       color: #00ffe0;
       font-family: 'IBM Plex Sans', sans-serif;
       letter-spacing: 1px;
       z-index: 10;
+      font-size: clamp(14px, 4vw, 18px);
     }
     #ai-info {
       position: fixed;
-      top: 50px;
-      right: 20px;
+      top: max(44px, calc(env(safe-area-inset-top) + 34px));
+      right: 10px;
       color: #e91e63;
-      font-size: 12px;
+      font-size: clamp(10px, 2.5vw, 12px);
       background: rgba(0,0,0,0.7);
-      padding: 10px;
+      padding: 8px;
       border-radius: 8px;
       border: 1px solid rgba(233,30,99,0.3);
     }
+    @media (max-width: 500px) {
+      #ai-info { top: auto; bottom: 50px; right: 8px; }
+    }
     #controls {
       position: fixed;
-      bottom: 20px;
+      bottom: max(12px, env(safe-area-inset-bottom));
       left: 50%;
       transform: translateX(-50%);
       color: #1f6feb;
-      font-size: 14px;
+      font-size: clamp(12px, 3vw, 14px);
       text-align: center;
     }
     .loading {
@@ -85,12 +108,14 @@
   </div>
   
   <div id="controls">
-    Move mouse to control paddle • AI learns from your moves
+    <span id="controls-text">Touch or move mouse to control paddle</span>
   </div>
   
   <div class="loading" id="loading">Initializing AI...</div>
   
-  <canvas id="pong" width="800" height="500"></canvas>
+  <div class="canvas-wrap">
+    <canvas id="pong" width="800" height="500"></canvas>
+  </div>
   
   <!-- Bass Boom Sound Effects -->
   <audio id="hit" preload="auto"></audio>
@@ -515,14 +540,23 @@
       requestAnimationFrame(gameLoop);
     }
     
-    window.addEventListener('mousemove', e => {
+    function setPaddleFromClientY(clientY) {
       const rect = canvas.getBoundingClientRect();
-      gameState.playerY = e.clientY - rect.top - paddleHeight/2;
-      
+      const scaleY = canvas.height / rect.height;
+      const gameY = (clientY - rect.top) * scaleY - paddleHeight / 2;
+      gameState.playerY = Math.max(0, Math.min(canvas.height - paddleHeight, gameY));
       if (gameState.gameStarted) {
         sendGameAction('paddle_move', { y: gameState.playerY });
       }
-    });
+    }
+    window.addEventListener('mousemove', e => { setPaddleFromClientY(e.clientY); });
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (e.touches.length) setPaddleFromClientY(e.touches[0].clientY);
+    }, { passive: false });
+    canvas.addEventListener('touchstart', e => {
+      if (e.touches.length) setPaddleFromClientY(e.touches[0].clientY);
+    }, { passive: true });
     
     window.addEventListener('beforeunload', async () => {
       if (gameState.sessionId && gameState.gameStarted) {

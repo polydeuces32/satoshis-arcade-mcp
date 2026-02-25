@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Satoshi’s Arcade MCP</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="/frontend/manifest.json">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap');
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       background: radial-gradient(circle at top left,#000010 0%,#0a0a0f 100%);
       color: #e0e0e0;
@@ -16,19 +17,25 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
+      min-height: 100dvh;
       margin: 0;
       overflow: hidden;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      -webkit-user-select: none;
+      user-select: none;
     }
     #logo {
-      font-size: 3rem;
+      font-size: clamp(1.5rem, 8vw, 3rem);
       font-weight: 600;
       letter-spacing: 2px;
       background: linear-gradient(90deg,#1f6feb,#00ffe0,#e91e63);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      background-clip: text;
       opacity: 0;
       animation: flicker 3s ease-in-out forwards;
+      text-align: center;
     }
     @keyframes flicker {
       0%,10%,20%,22%,24%,28%,30%,40% { opacity:0; }
@@ -36,31 +43,47 @@
     }
     .menu {
       display: flex;
-      gap: 40px;
-      margin-top: 50px;
+      flex-wrap: wrap;
+      gap: clamp(20px, 5vw, 40px);
+      margin-top: clamp(24px, 6vw, 50px);
+      padding: 0 16px;
+      justify-content: center;
       opacity: 0;
       animation: fadeIn 3s ease forwards 2.8s;
     }
     @keyframes fadeIn { to { opacity: 1; } }
     .game-card {
-      width: 200px; height: 200px;
+      width: clamp(140px, 42vw, 200px);
+      height: clamp(140px, 42vw, 200px);
+      min-width: 140px;
+      min-height: 140px;
       border-radius: 20px;
       background: rgba(255,255,255,0.05);
       backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       border: 1px solid rgba(255,255,255,0.08);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      text-decoration: none; color: white;
-      transition: transform 0.3s, box-shadow 0.3s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      color: white;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
-    .game-card:hover {
-      transform: translateY(-6px);
+    .game-card:hover, .game-card:active {
+      transform: translateY(-6px) scale(1.02);
       box-shadow: 0 0 25px rgba(0,255,224,0.4);
     }
-    .emoji { font-size: 54px; margin-bottom: 10px; }
+    .emoji { font-size: clamp(40px, 12vw, 54px); margin-bottom: 8px; }
     footer {
-      position: absolute; bottom: 20px; color:#555;
-      font-size:0.8rem; letter-spacing:1px;
+      position: absolute;
+      bottom: max(12px, env(safe-area-inset-bottom));
+      color:#555;
+      font-size: clamp(0.7rem, 2.5vw, 0.8rem);
+      letter-spacing:1px;
+    }
+    @media (max-width: 480px) {
+      .menu { flex-direction: column; align-items: center; }
     }
   </style>
 </head>
@@ -84,6 +107,7 @@
     window.addEventListener('click',()=>hum.play(),{once:true});
     document.querySelectorAll('.game-card').forEach(btn=>{
       btn.addEventListener('mouseenter',()=>{hover.currentTime=0;hover.play();});
+      btn.addEventListener('touchend',()=>{hover.currentTime=0;hover.play();},{passive:true});
     });
   </script>
 </body>
