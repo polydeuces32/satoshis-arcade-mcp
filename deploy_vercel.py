@@ -22,7 +22,7 @@ def deploy_to_vercel():
     # Deploy to Vercel
     try:
         print("📦 Deploying to Vercel...")
-        result = subprocess.run(['vercel', '--prod'], check=True, capture_output=True, text=True)
+        result = subprocess.run(['vercel', '--prod', '--yes'], check=True, capture_output=True, text=True)
         
         print("✅ Deployment successful!")
         print(result.stdout)
