@@ -89,12 +89,15 @@
     .restart-btn {
       background: linear-gradient(45deg, #1f6feb, #00ffe0);
       border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
+      padding: 12px 24px;
+      min-height: 48px;
+      border-radius: 8px;
       color: white;
       font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 16px;
       cursor: pointer;
       margin-top: 15px;
+      touch-action: manipulation;
     }
     .loading {
       position: fixed;
@@ -135,9 +138,27 @@
       .game-container { flex-direction: column; align-items: center; }
       .game-info { width: 100%; }
     }
+    .back-link {
+      position: fixed;
+      top: max(8px, env(safe-area-inset-top));
+      left: max(12px, env(safe-area-inset-left));
+      z-index: 20;
+      color: #00ffe0;
+      text-decoration: none;
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(0,255,224,0.3);
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .back-link:hover, .back-link:active { background: rgba(0,255,224,0.2); }
   </style>
 </head>
 <body>
+  <a href="/" class="back-link" aria-label="Back to arcade">← Arcade</a>
   <div class="loading" id="loading">Initializing Tetris AI...</div>
   
   <div class="game-container">
@@ -824,7 +845,6 @@
         gameState.currentPiece = hardDrop(gameState.currentPiece);
         sendGameAction('hard_drop', {});
       }
-      [left, right, rotate, drop, hard].forEach(el => { if (el) el.addEventListener('touchstart', (e) => { e.preventDefault(); }); });
       if (left) left.addEventListener('click', leftBtn);
       if (right) right.addEventListener('click', rightBtn);
       if (rotate) rotate.addEventListener('click', rotateBtn);

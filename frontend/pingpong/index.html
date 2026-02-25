@@ -83,6 +83,23 @@
       font-size: 18px;
       z-index: 100;
     }
+    .back-link {
+      position: fixed;
+      top: max(8px, env(safe-area-inset-top));
+      left: max(12px, env(safe-area-inset-left));
+      z-index: 20;
+      color: #00ffe0;
+      text-decoration: none;
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(0,255,224,0.3);
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .back-link:hover, .back-link:active { background: rgba(0,255,224,0.2); }
     body::before {
       content: "";
       position: fixed;
@@ -96,6 +113,7 @@
   </style>
 </head>
 <body>
+  <a href="/" class="back-link" aria-label="Back to arcade">← Arcade</a>
   <div id="hud">
     <span>🏓 Satoshi's AI Pong</span>
     <div id="score">0 : 0</div>
